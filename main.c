@@ -1,23 +1,3 @@
-main.c
-Z
-Type
-C
-Size
-4 KB (3,859 bytes)
-Storage used
-4 KB (3,859 bytes)
-Location
-midi_trig
-Owner
-me
-Modified
-11:01 AM by me
-Opened
-11:33 AM by me
-Created
-10:33 AM
-Add a description
-Viewers can download
 // MIDI to trigger converter for the DR 110
 
 #define F_CPU 16000000UL
