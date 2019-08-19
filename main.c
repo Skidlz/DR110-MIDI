@@ -1,38 +1,41 @@
-/*
- * main.c
- *
- *  Created on: Dec 13, 2014
- *      Author: Owner
- */
-
-// MIDI to trigger converter, customized for the DR 110
-// triggers are inverted and open collector
+main.c
+Z
+Type
+C
+Size
+4 KB (3,859 bytes)
+Storage used
+4 KB (3,859 bytes)
+Location
+midi_trig
+Owner
+me
+Modified
+11:01 AM by me
+Opened
+11:33 AM by me
+Created
+10:33 AM
+Add a description
+Viewers can download
+// MIDI to trigger converter for the DR 110
 
 #define F_CPU 16000000UL
+#define byte uint8_t
 #include <stdint.h>
 #include <stdlib.h>
-#define byte uint8_t
+#include <string.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <string.h>
+
 #include "uart.h"
 #include "midi.h"
-//#include <avr/iom328p.h>
 
-//cy, oh, ch, bd, sn, cpII, cpI, ac
-#define tr_cnt 10
 byte trig_status_L = 0;
 byte trig_status_H = 0;
-/*
-byte clap_stage = 0;// 0= off, 1=init trig, 2=trig2, 3=trig3, 4=trig4
-#define cp_dly_1	10
-#define cp_dly_2	1
-*/
 
-byte clap_vcs = 5;
-byte clap_vcs_II = 8;
-
-//byte clap_wait = 0;
+#define clap_vcs 5 // voice # of CPI
+#define clap_vcs_II 8 // " CPII
 
 struct VOICE{
 	byte note;
@@ -42,44 +45,27 @@ struct VOICE{
 	byte timer;
 }VOICE;
 
-int vcs_cnt = 10;
-struct VOICE vcs[10];// list of voice
-/*
- * 	vcs = {// list of voice
-		{35, PORTD, 1, 0, 0}, //kick
-		{36, PORTD, 2, 0, 0}, //snare
-		{37, PORTD, 2, 0, 0}, //o-hat
-		{38, PORTD, 2, 0, 0}, //c-hat
-		{39, PORTD, 2, 0, 0}, //cymbal
-		{40, PORTD, 2, 0, 0}, //clap
-		{41, PORTD, 2, 0, 0}, //accent
-		{42, PORTD, 2, 0, 0}, //trig out
-		{43, PORTD, 2, 0, 0}, //cpI
-		{44, PORTD, 2, 0, 0}, //cpII
-	};
- *
- */
+#define vcs_cnt 10
+struct VOICE vcs[vcs_cnt];// list of voice
 
 const byte acnt_lvl = 90; //velocity for accent to turn on
 #define acnt_pin 2 //pin to activate accent on PORTD
-#define trig_len 9 //tigger length in 1/10ms
+#define trig_len 9 //trigger length in 1/10ms
 #define CTC_MATCH_OVERFLOW ((F_CPU / 10000) / 8) //10khz
-ISR (TIMER1_COMPA_vect) {
-	for (int i = 0; i < tr_cnt; i++) if (vcs[i].status) vcs[i].timer++; //inc counts
+
+ISR (TIMER1_COMPA_vect) {
+	for (int i = 0; i < vcs_cnt; i++) if (vcs[i].status) vcs[i].timer++; //inc counts
 	PORTB = trig_status_L;
 	PORTD = trig_status_H;
 }
 
 void key_press(byte note, byte vel) {
 	//set accent
-	//PORTD = (vel >= acnt_lvl) ? (PORTD | (1<<acnt_pin)): (PORTD & ~(1<<acnt_pin));
-	if ( vel >= acnt_lvl) key_press(41, 0);//prevent recursive calls to accent
-	// note, port, bit, status, timer
+	if (vel >= acnt_lvl) key_press(41, 0);//prevent recursive calls to accent
 	for (int i = 0; i < vcs_cnt; i++){
 		if (vcs[i].note == note){
 			*vcs[i].port |= (1 << vcs[i].bit); // turn on trigger
 			vcs[i].status = (i == clap_vcs) ? 2: 1; // clap status = 2
-			//vcs[i].status = 1; // playing
 			vcs[i].timer = 0; // reset count
 			if (vcs[i].port == &PORTB){
 				trig_status_L |= (1 << vcs[i].bit);
@@ -127,8 +113,6 @@ void poll_trig(){
 				vcs[i].status = 0;
 				vcs[i].timer = 0; // reset count
 			}
-
-			break;
 		}
 	}
 }
@@ -142,10 +126,7 @@ void midi_control(byte cc, byte val){
 	}
 }
 
-
-
 int main() {
-
 	memcpy(vcs, (struct VOICE[]) {
 		{35, &PORTB, 1, 0, 0}, //kick
 		{36, &PORTB, 2, 0, 0}, //snare
@@ -180,9 +161,9 @@ int main() {
 	DDRB = 0xff;
 	DDRC = 0xff;
 	DDRD = 0b11111110; //0=input
-	PORTB = 0;//BD,SD,CH,OH,LT,HT
-	PORTC = 0;//RS,CY
-	PORTD = 0b11111100;//VOL4-0, ACC, MIDIIO
+	PORTB = 0;//AC, CPI, CPII, SD, BD, CH
+	PORTC = 0;
+	PORTD = 0b11111100;//OH, CY,x,x,x,x, MIDI
 
 	//-------------------------------
 
@@ -192,4 +173,3 @@ int main() {
 	}
 	return 1;
 }
-
